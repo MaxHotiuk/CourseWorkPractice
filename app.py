@@ -344,15 +344,21 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
             hoverinfo="name"
         )
         
-        # Customize layout
+        # Customize layout to make the plot square
         fig.update_layout(
             xaxis_title="Нормалізований прибуток",
             yaxis_title="Нормалізована експертна оцінка",
             legend_title="Тип рішення",
-            height=600
+            height=600,
+            width=600,
+            autosize=False,
+            yaxis=dict(
+            scaleanchor="x",
+            scaleratio=1,
+            )
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=False)
         
         # Show all combinations if requested
         if show_combinations:
