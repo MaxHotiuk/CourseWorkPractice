@@ -14,51 +14,51 @@ from utils.knapsack import solve_knapsack, create_dp_table_df
 from utils.combinations import generate_combinations, calculate_distances, create_combinations_df
 
 def main():
-    st.set_page_config(page_title="Ideal Point Method for Project Selection", 
+    st.set_page_config(page_title="Метод ідеальної точки для вибору проєктів", 
                        page_icon="📊", 
                        layout="wide")
     
-    st.title("Ideal Point Method for Project Selection")
-    st.markdown(""""
-    This application helps decision-makers select an optimal portfolio of projects 
-    considering multiple criteria and budget constraints. It uses the Ideal Point Method 
-    to find solutions that balance different objectives.
+    st.title("Метод ідеальної точки для вибору проєктів")
+    st.markdown("""
+    Цей додаток допомагає особам, які приймають рішення, вибрати оптимальний портфель проєктів, 
+    враховуючи кілька критеріїв та бюджетні обмеження. Він використовує Метод ідеальної точки 
+    для знаходження рішень, що балансують різні цілі.
     """)
     
     with st.sidebar:
-        st.header("Input Parameters")
+        st.header("Вхідні параметри")
         
         # Budget input
-        budget = st.number_input("Available Budget", min_value=1, value=6)
+        budget = st.number_input("Доступний бюджет", min_value=1, value=6)
         
         # Number of projects
-        num_projects = st.number_input("Number of Projects", min_value=1, max_value=200, value=4)
+        num_projects = st.number_input("Кількість проєктів", min_value=1, max_value=200, value=4)
         
-        st.subheader("Analysis Options")
-        show_normalization = st.checkbox("Show Normalization Details", value=True)
-        show_knapsack = st.checkbox("Show Knapsack Solution", value=True)
-        show_combinations = st.checkbox("Show All Combinations", value=True)
-        num_top_combinations = st.slider("Number of Top Combinations to Display", 
+        st.subheader("Опції аналізу")
+        show_normalization = st.checkbox("Показати деталі нормалізації", value=True)
+        show_knapsack = st.checkbox("Показати рішення задачі про рюкзак", value=True)
+        show_combinations = st.checkbox("Показати всі комбінації", value=True)
+        num_top_combinations = st.slider("Кількість найкращих комбінацій для відображення", 
                                          min_value=1, max_value=20, value=10)
     
     # Project data input
-    st.header("Project Data")
+    st.header("Дані про проєкти")
     
     # Allow selecting input method
-    input_method = st.radio("Input Method", 
-                            ["Manual Entry", "Sample Data", "CSV Upload"],
+    input_method = st.radio("Спосіб введення даних", 
+                            ["Ручне введення", "Приклад даних", "Завантажити CSV"],
                             horizontal=True)
     
-    if input_method == "Manual Entry":
+    if input_method == "Ручне введення":
         col_headers = st.columns([1, 1, 1, 1])
         with col_headers[0]:
-            st.markdown("**Project**")
+            st.markdown("**Проєкт**")
         with col_headers[1]:
-            st.markdown("**Cost**")
+            st.markdown("**Вартість**")
         with col_headers[2]:
-            st.markdown("**Profit**")
+            st.markdown("**Прибуток**")
         with col_headers[3]:
-            st.markdown("**Expert Score**")
+            st.markdown("**Експертна оцінка**")
         
         # Initialize project data list
         projects = []
@@ -67,19 +67,19 @@ def main():
         for i in range(num_projects):
             cols = st.columns([1, 1, 1, 1])
             with cols[0]:
-                st.markdown(f"Project {i+1}")
+                st.markdown(f"Проєкт {i+1}")
             with cols[1]:
-                cost = st.number_input(f"Cost {i+1}", 
+                cost = st.number_input(f"Вартість {i+1}", 
                                        min_value=1, 
                                        value=20, 
                                        key=f"cost_{i}")
             with cols[2]:
-                profit = st.number_input(f"Profit {i+1}", 
+                profit = st.number_input(f"Прибуток {i+1}", 
                                          min_value=0, 
                                          value=30, 
                                          key=f"profit_{i}")
             with cols[3]:
-                expert = st.number_input(f"Expert Score {i+1}", 
+                expert = st.number_input(f"Експертна оцінка {i+1}", 
                                          min_value=0, 
                                          value=40, 
                                          key=f"expert_{i}")
@@ -87,10 +87,10 @@ def main():
             # Add project data
             projects.append([cost, profit, expert])
                 
-    elif input_method == "Sample Data":
+    elif input_method == "Приклад даних":
         # Provide sample project data
         sample_data = {
-            "Small Example (4 projects)": [
+            "Малий приклад (4 проєкти)": [
                 [2, 20, 4],  # x1
                 [1, 30, 3],  # x2
                 [3, 40, 2],  # x3
@@ -98,19 +98,19 @@ def main():
             ]
         }
         
-        selected_sample = st.selectbox("Select Sample Data", list(sample_data.keys()))
+        selected_sample = st.selectbox("Виберіть приклад даних", list(sample_data.keys()))
         projects = sample_data[selected_sample]
         
         # Display the sample data
         project_df = pd.DataFrame(projects, 
-                                 columns=["Cost", "Profit", "Expert Score"],
-                                 index=[f"Project {i+1}" for i in range(len(projects))])
+                                 columns=["Вартість", "Прибуток", "Експертна оцінка"],
+                                 index=[f"Проєкт {i+1}" for i in range(len(projects))])
         st.dataframe(project_df)
         
     else:  # CSV Upload
-        st.info("Upload a CSV file with columns: Cost, Profit, ExpertScore")
+        st.info("Завантажте CSV файл із стовпцями: Cost, Profit, ExpertScore")
         
-        uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+        uploaded_file = st.file_uploader("Виберіть CSV файл", type="csv")
         if uploaded_file is not None:
             try:
                 csv_data = pd.read_csv(uploaded_file)
@@ -135,21 +135,21 @@ def main():
                     
                     st.dataframe(csv_data)
                 else:
-                    st.error("CSV must contain Cost, Profit, and ExpertScore columns")
+                    st.error("CSV повинен містити стовпці Cost, Profit та ExpertScore")
                     projects = []
             except Exception as e:
-                st.error(f"Error reading CSV: {e}")
+                st.error(f"Помилка читання CSV: {e}")
                 projects = []
         else:
             projects = []
     
     # Only proceed if we have project data
     if not projects:
-        st.warning("Please enter project data to continue.")
+        st.warning("Будь ласка, введіть дані про проєкти, щоб продовжити.")
         return
     
     # Run analysis when button is pressed
-    if st.button("Run Analysis"):
+    if st.button("Виконати аналіз"):
         run_analysis(projects, budget, show_normalization, show_knapsack, 
                     show_combinations, num_top_combinations)
 
@@ -157,18 +157,18 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
                 show_combinations, num_top_combinations):
     """Run the complete project selection analysis"""
     
-    st.header("Analysis Results")
+    st.header("Результати аналізу")
     
     # Step 1: Normalize data
     norm_profits, norm_expert, norm_data = normalize_data(projects)
     
     if show_normalization:
-        with st.expander("Step 1: Data Normalization", expanded=True):
+        with st.expander("Крок 1: Нормалізація даних", expanded=True):
             st.markdown("""
-            In this step, we normalize the criteria values using the Euclidean normalization method. 
-            This ensures that both criteria (profit and expert score) are on a comparable scale.
+            На цьому кроці ми нормалізуємо значення критеріїв, використовуючи метод евклідової нормалізації. 
+            Це забезпечує порівнянність обох критеріїв (прибутку та експертної оцінки).
             
-            The formula used is: $\\bar{a}_{ij} = \\frac{a_{ij}}{\\sqrt{\\sum_{i=1}^{m} a_{ij}^2}}$
+            Використовується формула: $\\bar{a}_{ij} = \\frac{r_{ij}}{\\sqrt{\\sum_{i=1}^{m} r_{ij}^2}}$
             """)
             
             # Show normalization table
@@ -178,20 +178,20 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
             # Verify normalization
             verify_result = verify_normalization(norm_profits, norm_expert)
             
-            st.markdown("**Verification**:")
+            st.markdown("**Перевірка:**")
             cols = st.columns(2)
             with cols[0]:
-                st.markdown(f"Sum of squared normalized profits: {verify_result['profit_sum']}")
-                st.markdown(f"Should equal 1.0: {'✅' if verify_result['profit_valid'] else '❌'}")
+                st.markdown(f"Сума квадратів нормалізованих прибутків: {verify_result['profit_sum']}")
+                st.markdown(f"Має дорівнювати 1.0: {'✅' if verify_result['profit_valid'] else '❌'}")
             with cols[1]:
-                st.markdown(f"Sum of squared normalized expert scores: {verify_result['expert_sum']}")
-                st.markdown(f"Should equal 1.0: {'✅' if verify_result['expert_valid'] else '❌'}")
+                st.markdown(f"Сума квадратів нормалізованих експертних оцінок: {verify_result['expert_sum']}")
+                st.markdown(f"Має дорівнювати 1.0: {'✅' if verify_result['expert_valid'] else '❌'}")
     
     # Step 2: Solve knapsack problems to find ideal points
-    with st.expander("Step 2: Finding Ideal Points", expanded=True):
+    with st.expander("Крок 2: Пошук ідеальних точок", expanded=True):
         st.markdown("""
-        For each criterion, we solve a knapsack problem to find the maximum possible value 
-        given the budget constraint. These represent the ideal (but typically unattainable) points.
+        Для кожного критерію ми вирішуємо задачу про рюкзак, щоб знайти максимально можливе значення 
+        з урахуванням бюджетних обмежень. Ці значення представляють ідеальні (але зазвичай недосяжні) точки.
         """)
         
         # Solve for max profit
@@ -209,42 +209,49 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
         # Display ideal points
         cols = st.columns(2)
         with cols[0]:
-            st.markdown("**Maximizing Profit:**")
+            st.markdown("**Максимізація прибутку:**")
             selected = ", ".join([f"x{i+1}" for i, x in enumerate(profit_solution) if x == 1])
-            st.markdown(f"Selected projects: {selected}")
-            st.markdown(f"Maximum profit: {max_profit}")
-            st.markdown(f"Normalized value: {ideal_profit:.4f}")
+            st.markdown(f"Вибрані проєкти: {selected}")
+            st.markdown(f"Максимальний прибуток: {max_profit}")
+            st.markdown(f"Нормалізоване значення: {ideal_profit:.4f}")
             
             if show_knapsack:
-                # Changed from nested expander to a subheader and additional content
-                st.markdown("#### Knapsack Solution for Profit")
-                st.markdown("**Dynamic Programming Table:**")
-                dp_df = create_dp_table_df(profit_dp, budget, "Profit")
-                st.dataframe(dp_df)
+                st.markdown("#### Рішення задачі про рюкзак для прибутку")
+                st.markdown("**Таблиця динамічного програмування:**")
+                dp_df = create_dp_table_df(profit_dp, budget, "Прибуток")
+                st.dataframe(dp_df, hide_index=True)
         
         with cols[1]:
-            st.markdown("**Maximizing Expert Score:**")
+            st.markdown("**Максимізація експертної оцінки:**")
             selected = ", ".join([f"x{i+1}" for i, x in enumerate(expert_solution) if x == 1])
-            st.markdown(f"Selected projects: {selected}")
-            st.markdown(f"Maximum expert score: {max_expert}")
-            st.markdown(f"Normalized value: {ideal_expert:.4f}")
+            st.markdown(f"Вибрані проєкти: {selected}")
+            st.markdown(f"Максимальна експертна оцінка: {max_expert}")
+            st.markdown(f"Нормалізоване значення: {ideal_expert:.4f}")
             
             if show_knapsack:
-                # Changed from nested expander to a subheader and additional content
-                st.markdown("#### Knapsack Solution for Expert Score")
-                st.markdown("**Dynamic Programming Table:**")
-                dp_df = create_dp_table_df(expert_dp, budget, "Expert Score")
-                st.dataframe(dp_df)
+                st.markdown("#### Рішення задачі про рюкзак для експертної оцінки")
+                st.markdown("**Таблиця динамічного програмування:**")
+                dp_df = create_dp_table_df(expert_dp, budget, "Експертна оцінка")
+                st.dataframe(dp_df, hide_index=True)
         
-        st.markdown("**Ideal Point:**")
-        st.markdown(f"(Normalized Profit, Normalized Expert Score) = ({ideal_profit:.4f}, {ideal_expert:.4f})")
+        st.markdown("**Ідеальна точка:**")
+        st.markdown(f"(Прибуток, Експертна оцінка) = ({max_profit}, {max_expert})")
+        st.markdown(f"(Нормалізований прибуток, Нормалізована експертна оцінка) = ({ideal_profit:.4f}, {ideal_expert:.4f})")
     
     # Step 3: Generate all feasible combinations
-    with st.expander("Step 3: Finding the Best Solution", expanded=True):
+    with st.expander("Крок 3: Пошук найкращого рішення", expanded=True):
         st.markdown("""
-        We generate all feasible combinations of projects that respect the budget constraints.
-        For each combination, we calculate the Euclidean distance to the ideal point.
-        The combination with the smallest distance is our recommended solution.
+        Ми генеруємо всі можливі комбінації проєктів, які відповідають бюджетним обмеженням.
+        Для кожної комбінації обчислюємо евклідову відстань до ідеальної точки.
+        Комбінація з найменшою відстанню є нашим рекомендованим рішенням.
+        """)
+        st.markdown("""
+        Формула, яка використовується для вимірювання відстані до ідеальної точки: $D_i=\\sqrt{\\sum_{j=1}^{m}{(r_{ij}\\ -\\ r_j^+)}^2}$
+        
+        Де:
+        - $D_i$ - відстань від рішення $i$ до ідеальної точки
+        - $r_{ij}$ - нормалізоване значення рішення $i$ за критерієм $j$
+        - $r_j^+$ - ідеальне значення для критерію $j$
         """)
         
         combinations = generate_combinations(projects, budget)
@@ -256,46 +263,46 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
         # Display best solution
         best_combo, best_cost, best_profit, best_expert, best_norm_profit, best_norm_expert, best_distance = distances[0]
         
-        st.markdown("**Best Solution:**")
+        st.markdown("**Найкраще рішення:**")
         selected = ", ".join([f"x{i+1}" for i, x in enumerate(best_combo) if x == 1])
         if not selected:
-            selected = "None"
+            selected = "Жодного"
             
-        st.markdown(f"Selected projects: {selected}")
-        st.markdown(f"Total cost: {best_cost}")
-        st.markdown(f"Total profit: {best_profit}")
-        st.markdown(f"Total expert score: {best_expert}")
-        st.markdown(f"Distance to ideal point: {best_distance:.4f}")
+        st.markdown(f"Вибрані проєкти: {selected}")
+        st.markdown(f"Загальна вартість: {best_cost}")
+        st.markdown(f"Загальний прибуток: {best_profit}")
+        st.markdown(f"Загальна експертна оцінка: {best_expert}")
+        st.markdown(f"Відстань до ідеальної точки: {best_distance:.4f}")
         
         # Show visualization of solutions
-        st.markdown("**Visualization of Solutions:**")
+        st.markdown("**Візуалізація рішень:**")
         
         # Create dataframe for plotting
         plot_data = []
         for combo, cost, profit, expert, norm_profit, norm_expert, distance in distances:
-            combo_str = ", ".join([f"x{j+1}" for j, x in enumerate(combo) if x == 1]) or "None"
+            combo_str = ", ".join([f"x{j+1}" for j, x in enumerate(combo) if x == 1]) or "Жодного"
             is_best = (combo == best_combo)
             is_ideal_profit = (norm_profit == ideal_profit)
             is_ideal_expert = (norm_expert == ideal_expert)
             
-            point_type = "Regular"
+            point_type = "Звичайна точка"
             if is_best:
-                point_type = "Best Solution"
+                point_type = "Найкраще рішення"
             elif is_ideal_profit and is_ideal_expert:
-                point_type = "Ideal Point"
+                point_type = "Ідеальна точка"
             elif is_ideal_profit:
-                point_type = "Ideal Profit"
+                point_type = "Ідеальний прибуток"
             elif is_ideal_expert:
-                point_type = "Ideal Expert"
+                point_type = "Ідеальна експертна оцінка"
             
             plot_data.append({
-                "Combination": combo_str,
-                "Normalized Profit": norm_profit,
-                "Normalized Expert Score": norm_expert,
-                "Profit": profit,
-                "Expert Score": expert,
-                "Distance": distance,
-                "Type": point_type
+                "Комбінація": combo_str,
+                "Нормалізований прибуток": norm_profit,
+                "Нормалізована експертна оцінка": norm_expert,
+                "Прибуток": profit,
+                "Експертна оцінка": expert,
+                "Відстань": distance,
+                "Тип": point_type
             })
         
         plot_df = pd.DataFrame(plot_data)
@@ -303,26 +310,26 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
         # Create scatter plot with Plotly
         fig = px.scatter(
             plot_df, 
-            x="Normalized Profit", 
-            y="Normalized Expert Score",
-            color="Type",
-            symbol="Type",
-            hover_name="Combination",
-            hover_data=["Profit", "Expert Score", "Distance"],
-            title="Solutions in Normalized Criteria Space",
+            x="Нормалізований прибуток", 
+            y="Нормалізована експертна оцінка",
+            color="Тип",
+            symbol="Тип",
+            hover_name="Комбінація",
+            hover_data=["Прибуток", "Експертна оцінка", "Відстань"],
+            title="Рішення в просторі нормалізованих критеріїв",
             color_discrete_map={
-                "Best Solution": "#FF5733",
-                "Ideal Profit": "#33A8FF",
-                "Ideal Expert": "#33FF57",
-                "Ideal Point": "#9E33FF",
-                "Regular": "#BEBEBE"
+                "Найкраще рішення": "#FF5733",
+                "Ідеальний прибуток": "#33A8FF",
+                "Ідеальна експертна оцінка": "#33FF57",
+                "Ідеальна точка": "#9E33FF",
+                "Звичайна точка": "#BEBEBE"
             },
             symbol_map={
-                "Best Solution": "star",
-                "Ideal Profit": "diamond",
-                "Ideal Expert": "diamond",
-                "Ideal Point": "circle",
-                "Regular": "circle"
+                "Найкраще рішення": "star",
+                "Ідеальний прибуток": "diamond",
+                "Ідеальна експертна оцінка": "diamond",
+                "Ідеальна точка": "circle",
+                "Звичайна точка": "circle"
             },
             size_max=15
         )
@@ -333,15 +340,15 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
             y=[ideal_expert],
             mode="markers",
             marker=dict(color="purple", size=15, symbol="x"),
-            name="Ideal Point",
+            name="Ідеальна точка",
             hoverinfo="name"
         )
         
         # Customize layout
         fig.update_layout(
-            xaxis_title="Normalized Profit",
-            yaxis_title="Normalized Expert Score",
-            legend_title="Solution Type",
+            xaxis_title="Нормалізований прибуток",
+            yaxis_title="Нормалізована експертна оцінка",
+            legend_title="Тип рішення",
             height=600
         )
         
@@ -349,14 +356,14 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
         
         # Show all combinations if requested
         if show_combinations:
-            st.markdown(f"**Top {min(num_top_combinations, len(distances))} Solutions:**")
+            st.markdown(f"**Топ {min(num_top_combinations, len(distances))} рішень:**")
             combinations_df = create_combinations_df(distances[:num_top_combinations])
             st.dataframe(combinations_df, use_container_width=True)
             
             # Option to download full results
             csv = combinations_df.to_csv(index=False)
             st.download_button(
-                label="Download Results as CSV",
+                label="Завантажити результати як CSV",
                 data=csv,
                 file_name="project_selection_results.csv",
                 mime="text/csv",

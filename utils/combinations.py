@@ -3,28 +3,28 @@ import pandas as pd
 
 def generate_combinations(projects, budget):
     """
-    Generates all possible combinations of projects that do not exceed the budget.
+    Генерує всі можливі комбінації проєктів, які не перевищують бюджет.
     
-    Args:
-        projects: List of projects, each containing [cost, profit, expert_score]
-        budget: Available budget
+    Аргументи:
+        projects: Список проєктів, кожен містить [вартість, прибуток, експертна_оцінка]
+        budget: Доступний бюджет
         
-    Returns:
-        list: List of tuples (combination, cost, profit, expert_score)
+    Повертає:
+        list: Список кортежів (комбінація, вартість, прибуток, експертна_оцінка)
     """
     n = len(projects)
     result = []
     
     def backtrack(index, current_combo, current_cost, current_profit, current_expert):
         if index == n:
-            # Add current combination to results
+            # Додаємо поточну комбінацію до результатів
             result.append((current_combo.copy(), current_cost, current_profit, current_expert))
             return
         
-        # Skip current project
+        # Пропускаємо поточний проєкт
         backtrack(index + 1, current_combo + [0], current_cost, current_profit, current_expert)
         
-        # Include current project if possible
+        # Включаємо поточний проєкт, якщо це можливо
         if current_cost + projects[index][0] <= budget:
             backtrack(
                 index + 1,
@@ -39,57 +39,57 @@ def generate_combinations(projects, budget):
 
 def calculate_distances(combinations, norm_profits, norm_expert, ideal_profit, ideal_expert):
     """
-    Calculates the distances from each combination to the ideal point.
+    Обчислює відстані від кожної комбінації до ідеальної точки.
     
-    Args:
-        combinations: List of project combinations
-        norm_profits: Normalized profit values
-        norm_expert: Normalized expert scores
-        ideal_profit: Ideal profit value
-        ideal_expert: Ideal expert score
+    Аргументи:
+        combinations: Список комбінацій проєктів
+        norm_profits: Нормалізовані значення прибутку
+        norm_expert: Нормалізовані експертні оцінки
+        ideal_profit: Ідеальне значення прибутку
+        ideal_expert: Ідеальна експертна оцінка
         
-    Returns:
-        list: List of tuples with distance information
+    Повертає:
+        list: Список кортежів з інформацією про відстані
     """
     distances = []
     
     for combo, total_cost, total_profit, total_expert in combinations:
-        # Calculate normalized sums for the combination
+        # Обчислюємо нормалізовані суми для комбінації
         norm_total_profit = sum([norm_profits[i] for i, x in enumerate(combo) if x == 1])
         norm_total_expert = sum([norm_expert[i] for i, x in enumerate(combo) if x == 1])
         
-        # Calculate Euclidean distance to ideal point
+        # Обчислюємо евклідову відстань до ідеальної точки
         distance = math.sqrt((norm_total_profit - ideal_profit)**2 + (norm_total_expert - ideal_expert)**2)
         distances.append((combo, total_cost, total_profit, total_expert, norm_total_profit, norm_total_expert, distance))
     
-    # Sort by distance (ascending)
+    # Сортуємо за відстанню (за зростанням)
     distances.sort(key=lambda x: x[6])
     return distances
 
 def create_combinations_df(distances):
     """
-    Creates a pandas DataFrame with combination details for display
+    Створює pandas DataFrame з деталями комбінацій для відображення
     
-    Args:
-        distances: List of tuples with distance information
+    Аргументи:
+        distances: Список кортежів з інформацією про відстані
         
-    Returns:
-        pandas.DataFrame: DataFrame with combination information
+    Повертає:
+        pandas.DataFrame: DataFrame з інформацією про комбінації
     """
     rows = []
     
     for i, (combo, cost, profit, expert, norm_profit, norm_expert, distance) in enumerate(distances, start=1):
-        combo_str = ', '.join([f'x{j+1}' for j, x in enumerate(combo) if x == 1]) or "None"
+        combo_str = ', '.join([f'x{j+1}' for j, x in enumerate(combo) if x == 1]) or "Жодного"
         
         rows.append({
-            'Rank': i,
-            'Combination': combo_str,
-            'Cost': cost,
-            'Profit': profit,
-            'Expert Score': expert,
-            'Norm. Profit': round(norm_profit, 4),
-            'Norm. Expert Score': round(norm_expert, 4),
-            'Distance': round(distance, 4)
+            'Ранг': i,
+            'Комбінація': combo_str,
+            'Вартість': cost,
+            'Прибуток': profit,
+            'Експертна оцінка': expert,
+            'Норм. прибуток': round(norm_profit, 4),
+            'Норм. експертна оцінка': round(norm_expert, 4),
+            'Відстань': round(distance, 4)
         })
     
     return pd.DataFrame(rows)

@@ -3,22 +3,22 @@ import numpy as np
 
 def solve_knapsack(projects, budget, criterion_index):
     """
-    Solves the knapsack problem using dynamic programming.
+    Вирішує задачу про рюкзак за допомогою динамічного програмування.
     
-    Args:
-        projects: List of projects, each containing [cost, profit, expert_score]
-        budget: Available budget
-        criterion_index: Index of criterion to maximize (1 for profit, 2 for expert score)
+    Аргументи:
+        projects: Список проєктів, кожен містить [вартість, прибуток, експертна_оцінка]
+        budget: Доступний бюджет
+        criterion_index: Індекс критерію для максимізації (1 для прибутку, 2 для експертної оцінки)
         
-    Returns:
-        tuple: (selected_projects, max_value, dp_table, dp_solution_path)
+    Повертає:
+        tuple: (обрані_проєкти, максимальне_значення, таблиця_дп, шлях_рішення_дп)
     """
     n = len(projects)
     
-    # Create DP table
+    # Створюємо таблицю ДП
     dp = [[0] * (budget + 1) for _ in range(n + 1)]
     
-    # Fill the table
+    # Заповнюємо таблицю
     for i in range(1, n + 1):
         cost = projects[i-1][0]
         value = projects[i-1][criterion_index]
@@ -29,11 +29,11 @@ def solve_knapsack(projects, budget, criterion_index):
             else:
                 dp[i][w] = dp[i-1][w]
     
-    # Reconstruct the solution
+    # Відновлюємо рішення
     solution = [0] * n
     w = budget
     
-    # Path of cells in the solution (for visualization)
+    # Шлях комірок у рішенні (для візуалізації)
     solution_path = []
     
     for i in range(n, 0, -1):
@@ -47,26 +47,26 @@ def solve_knapsack(projects, budget, criterion_index):
         else:
             solution_path.append((i, w))
     
-    # Start at 0,0
+    # Починаємо з 0,0
     if len(solution_path) > 0 and solution_path[-1][0] > 1:
         solution_path.append((0, 0))
     
-    # Reverse to get path from start to end
+    # Обертаємо для отримання шляху від початку до кінця
     solution_path.reverse()
     
     return solution, dp[n][budget], dp, solution_path
 
 def create_dp_table_df(dp, budget, criterion_name):
     """
-    Creates a pandas DataFrame from the DP table for display
+    Створює pandas DataFrame з таблиці ДП для відображення
     
-    Args:
-        dp: Dynamic programming table
-        budget: Maximum budget
-        criterion_name: Name of criterion being maximized
+    Аргументи:
+        dp: Таблиця динамічного програмування
+        budget: Максимальний бюджет
+        criterion_name: Назва критерію, який максимізується
         
-    Returns:
-        pandas.DataFrame: DataFrame version of DP table
+    Повертає:
+        pandas.DataFrame: Версія таблиці ДП у форматі DataFrame
     """
     rows = []
     

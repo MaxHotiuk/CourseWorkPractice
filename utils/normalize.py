@@ -3,36 +3,36 @@ import pandas as pd
 
 def normalize_data(projects):
     """
-    Normalizes project data by dividing each criterion value by the square root of
-    the sum of squares for that criterion.
+    Нормалізує дані проєктів, поділивши значення кожного критерію на квадратний корінь
+    суми квадратів цього критерію.
     
-    Args:
-        projects: List of projects, each containing [cost, profit, expert_score]
+    Аргументи:
+        projects: Список проєктів, кожен містить [вартість, прибуток, експертна_оцінка]
         
-    Returns:
-        tuple: (normalized_profits, normalized_expert_scores, normalization_data)
+    Повертає:
+        tuple: (нормалізовані_прибутки, нормалізовані_експертні_оцінки, дані_нормалізації)
     """
-    # Extract profits and expert scores for normalization
+    # Витягуємо прибутки та експертні оцінки для нормалізації
     profits = [project[1] for project in projects]
     expert_scores = [project[2] for project in projects]
     
-    # Calculate squares of values
+    # Обчислюємо квадрати значень
     squared_profits = [profit**2 for profit in profits]
     squared_expert = [score**2 for score in expert_scores]
     
-    # Calculate sum of squares for each criterion
+    # Обчислюємо суму квадратів для кожного критерію
     sum_squared_profits = sum(squared_profits)
     sum_squared_expert = sum(squared_expert)
     
-    # Calculate normalizing factor (square root of sum of squares)
+    # Обчислюємо нормалізуючий фактор (квадратний корінь суми квадратів)
     norm_factor_profits = (sum_squared_profits) ** 0.5
     norm_factor_expert = (sum_squared_expert) ** 0.5
     
-    # Normalize each value
+    # Нормалізуємо кожне значення
     norm_profits = [profit / norm_factor_profits for profit in profits]
     norm_expert = [score / norm_factor_expert for score in expert_scores]
     
-    # Create normalization data for display
+    # Створюємо дані нормалізації для відображення
     normalization_data = {
         'profits': profits,
         'squared_profits': squared_profits,
@@ -48,49 +48,49 @@ def normalize_data(projects):
 
 def create_normalization_df(projects, norm_data):
     """
-    Creates a pandas DataFrame with normalization details for display
+    Створює pandas DataFrame з деталями нормалізації для відображення
     
-    Args:
-        projects: List of projects
-        norm_data: Dictionary with normalization data
+    Аргументи:
+        projects: Список проєктів
+        norm_data: Словник з даними нормалізації
         
-    Returns:
-        pandas.DataFrame: DataFrame with normalization information
+    Повертає:
+        pandas.DataFrame: DataFrame з інформацією про нормалізацію
     """
     df = pd.DataFrame({
-        'Project': [f"x{i+1}" for i in range(len(projects))],
-        'Profit': norm_data['profits'],
-        'Profit²': norm_data['squared_profits'],
-        'Norm. Profit': [round(x, 4) for x in norm_data['norm_profits']],
-        'Expert Score': norm_data['expert_scores'],
-        'Expert Score²': norm_data['squared_expert'],
-        'Norm. Expert Score': [round(x, 4) for x in norm_data['norm_expert']]
+        'Проєкт': [f"x{i+1}" for i in range(len(projects))],
+        'Прибуток': norm_data['profits'],
+        'Прибуток²': norm_data['squared_profits'],
+        'Норм. прибуток': [round(x, 4) for x in norm_data['norm_profits']],
+        'Експертна оцінка': norm_data['expert_scores'],
+        'Експертна оцінка²': norm_data['squared_expert'],
+        'Норм. експертна оцінка': [round(x, 4) for x in norm_data['norm_expert']]
     })
     
-    # Add totals row
+    # Додаємо рядок з підсумками
     totals = pd.DataFrame({
-        'Project': ['√Σ'],
-        'Profit': [''],
-        'Profit²': [''],
-        'Norm. Profit': [round(norm_data['norm_factor_profits'], 4)],
-        'Expert Score': [''],
-        'Expert Score²': [''],
-        'Norm. Expert Score': [round(norm_data['norm_factor_expert'], 4)]
+        'Проєкт': ['√Σ'],
+        'Прибуток': [''],
+        'Прибуток²': [''],
+        'Норм. прибуток': [round(norm_data['norm_factor_profits'], 4)],
+        'Експертна оцінка': [''],
+        'Експертна оцінка²': [''],
+        'Норм. експертна оцінка': [round(norm_data['norm_factor_expert'], 4)]
     })
     
     return pd.concat([df, totals], ignore_index=True)
 
 def verify_normalization(norm_profits, norm_expert):
     """
-    Verifies that the normalization was done correctly by checking if the sum
-    of squared normalized values equals 1.
+    Перевіряє правильність нормалізації, перевіряючи, чи дорівнює сума
+    квадратів нормалізованих значень 1.
     
-    Args:
-        norm_profits: List of normalized profit values
-        norm_expert: List of normalized expert scores
+    Аргументи:
+        norm_profits: Список нормалізованих значень прибутку
+        norm_expert: Список нормалізованих експертних оцінок
         
-    Returns:
-        dict: Verification results
+    Повертає:
+        dict: Результати перевірки
     """
     sum_squared_norm_profits = sum([x**2 for x in norm_profits])
     sum_squared_norm_expert = sum([x**2 for x in norm_expert])
