@@ -59,12 +59,6 @@ def main():
             )
             primary_criterion_index = 1 if primary_criterion == "Прибуток" else 2
             secondary_criterion_index = 2 if primary_criterion == "Прибуток" else 1
-            
-            concession_amount = st.number_input(
-                f"Величина поступки для {primary_criterion}", 
-                min_value=1,
-                value=10
-            )
     
     # Project data input
     st.header("Дані про проєкти")
@@ -221,6 +215,8 @@ def main():
                 show_combinations, num_top_combinations
             )
     else:  # Sequential concessions method
+        concession_amount = 1
+        
         # Initialize concessions process when button is pressed
         if st.button("Розпочати аналіз методом послідовних поступок"):
             # Initialize state
@@ -238,7 +234,9 @@ def main():
             )
         
         # Continue with next concession
-        if st.session_state.show_continue_button and not st.session_state.solution_accepted:
+        if (st.session_state.concessions_state is not None and 
+            st.session_state.show_continue_button and 
+            not st.session_state.solution_accepted):
             with st.form("concession_form"):
                 st.markdown("### Прийняти поточне рішення або зробити поступку?")
                 
@@ -264,6 +262,7 @@ def main():
                         st.success("Рішення прийнято!")
                         st.session_state.show_continue_button = False
                         st.session_state.solution_accepted = True
+                        st.rerun()
                         
                         # Display final solution after accepting
                         display_final_sequential_solution(
@@ -303,6 +302,15 @@ def main():
                 st.session_state.concessions_state,
                 primary_criterion
             )
+        
+        # Add download button for history CSV
+        if st.session_state.solution_accepted and 'history_csv_data' in st.session_state:
+            st.download_button(
+                label="Завантажити історію ітерацій як CSV",
+                data=st.session_state.history_csv_data,
+                file_name="sequential_concessions_history.csv",
+                mime="text/csv",
+            )
 
 def display_final_sequential_solution(state, primary_criterion):
     """Display the final solution after accepting in sequential concessions method"""
@@ -333,6 +341,7 @@ def display_final_sequential_solution(state, primary_criterion):
         st.markdown("**Значення критеріїв:**")
         st.markdown(f"**{primary_name}:** {current_results['final_primary_value']}")
         st.markdown(f"**{secondary_name}:** {current_results['final_secondary_value']}")
+        st.markdown(f"**Вказна величина поступки:** {current_results['concession_amount']}")
         st.markdown(f"**Загальна поступка для {primary_name}:** {current_results['total_concession']}")
     
     # Show history of iterations in an expander
@@ -348,14 +357,9 @@ def display_final_sequential_solution(state, primary_criterion):
     with st.expander("Історія ітерацій", expanded=False):
         st.dataframe(history_df, use_container_width=True)
 
-    csv = history_df.to_csv(index=False)
-    st.download_button(
-        label="Завантажити історію ітерацій як CSV",
-        data=csv,
-        file_name="sequential_concessions_history.csv",
-        mime="text/csv",
-    )
-
+    # Store CSV data in session state for download button outside of form
+    st.session_state.history_csv_data = history_df.to_csv(index=False)
+    
     # Visualize the final solution
     st.markdown("### Візуалізація фінального рішення")
     
