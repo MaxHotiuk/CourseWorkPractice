@@ -126,6 +126,7 @@ def get_current_result(state):
         "final_secondary_value": state["current_secondary_value"],
         "final_cost": state["current_cost"],
         "iterations": state["iteration"],
+        "concession_amount": state["history"][-1]["concession_amount"],
         "total_concession": state["original_primary_max"] - state["current_primary_value"],
         "history": state["history"]
     }
