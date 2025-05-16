@@ -341,7 +341,7 @@ def display_final_sequential_solution(state, primary_criterion):
         st.markdown("**Значення критеріїв:**")
         st.markdown(f"**{primary_name}:** {current_results['final_primary_value']}")
         st.markdown(f"**{secondary_name}:** {current_results['final_secondary_value']}")
-        st.markdown(f"**Вказна величина поступки:** {current_results['concession_amount']}")
+        st.markdown(f"**Вказана величина поступки:** {current_results['concession_amount']}")
         st.markdown(f"**Загальна поступка для {primary_name}:** {current_results['total_concession']}")
     
     # Show history of iterations in an expander
