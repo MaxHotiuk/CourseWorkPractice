@@ -111,6 +111,24 @@ def main():
             
             # Add project data
             projects.append([cost, profit, expert])
+        
+        # Add option to download entered project data
+        if projects:
+            project_df = pd.DataFrame(projects, 
+                                    columns=["Вартість", "Прибуток", "Експертна оцінка"],
+                                    index=[f"Проєкт {i+1}" for i in range(len(projects))])
+            
+            # Display the entered data as a table
+            st.dataframe(project_df)
+            
+            # Download option for manual data
+            csv = project_df.to_csv(index=True)
+            st.download_button(
+                label="Завантажити введені дані як CSV",
+                data=csv,
+                file_name="project_data.csv",
+                mime="text/csv",
+            )
                 
     elif input_method == "Приклад даних":
         # Provide sample project data
@@ -128,9 +146,18 @@ def main():
         
         # Display the sample data
         project_df = pd.DataFrame(projects, 
-                                 columns=["Вартість", "Прибуток", "Експертна оцінка"],
+                                 columns=["Cost", "Profit", "ExpertScore"],
                                  index=[f"Проєкт {i+1}" for i in range(len(projects))])
         st.dataframe(project_df)
+        
+        # Download option for sample data
+        csv = project_df.to_csv(index=True)
+        st.download_button(
+            label="Завантажити дані прикладу як CSV",
+            data=csv,
+            file_name="sample_project_data.csv",
+            mime="text/csv",
+        )
         
     else:  # CSV Upload
         st.info("Завантажте CSV файл із стовпцями: Cost, Profit, ExpertScore")
@@ -178,6 +205,8 @@ def main():
         st.session_state.concessions_state = None
     if 'show_continue_button' not in st.session_state:
         st.session_state.show_continue_button = False
+    if 'solution_accepted' not in st.session_state:
+        st.session_state.solution_accepted = False
     
     # Run analysis based on selected method
     if optimization_method == "Метод ідеальної точки":
@@ -185,6 +214,7 @@ def main():
             # Reset sequential concessions state when switching methods
             st.session_state.concessions_state = None
             st.session_state.show_continue_button = False
+            st.session_state.solution_accepted = False
             
             run_ideal_point_analysis(
                 projects, budget, show_normalization, show_knapsack, 
@@ -198,6 +228,7 @@ def main():
                 projects, budget, primary_criterion_index, secondary_criterion_index
             )
             st.session_state.show_continue_button = True
+            st.session_state.solution_accepted = False
             
             # Show initial solution
             display_sequential_concessions_results(
@@ -207,7 +238,7 @@ def main():
             )
         
         # Continue with next concession
-        if st.session_state.show_continue_button:
+        if st.session_state.show_continue_button and not st.session_state.solution_accepted:
             with st.form("concession_form"):
                 st.markdown("### Прийняти поточне рішення або зробити поступку?")
                 
@@ -232,6 +263,13 @@ def main():
                     if make_concession == "Прийняти поточне рішення":
                         st.success("Рішення прийнято!")
                         st.session_state.show_continue_button = False
+                        st.session_state.solution_accepted = True
+                        
+                        # Display final solution after accepting
+                        display_final_sequential_solution(
+                            st.session_state.concessions_state,
+                            primary_criterion
+                        )
                     else:
                         # Apply next concession
                         st.session_state.concessions_state = make_next_concession(
@@ -244,13 +282,141 @@ def main():
                         if "acceptable_combinations" in latest_history and not latest_history["acceptable_combinations"]:
                             st.warning("Немає прийнятних комбінацій з такою поступкою. Використовуємо попереднє рішення.")
                             st.session_state.show_continue_button = False
-                        
-                        # Display updated results
-                        display_sequential_concessions_results(
-                            st.session_state.concessions_state, 
-                            primary_criterion,
-                            new_concession
-                        )
+                            st.session_state.solution_accepted = True
+                            
+                            # Display final solution when no more combinations are available
+                            display_final_sequential_solution(
+                                st.session_state.concessions_state,
+                                primary_criterion
+                            )
+                        else:
+                            # Display updated results
+                            display_sequential_concessions_results(
+                                st.session_state.concessions_state, 
+                                primary_criterion,
+                                new_concession
+                            )
+        
+        # If solution was already accepted, display the final solution
+        elif st.session_state.solution_accepted and st.session_state.concessions_state:
+            display_final_sequential_solution(
+                st.session_state.concessions_state,
+                primary_criterion
+            )
+
+def display_final_sequential_solution(state, primary_criterion):
+    """Display the final solution after accepting in sequential concessions method"""
+    
+    st.header("Фінальне рішення методом послідовних поступок")
+    
+    # Determine names for criteria
+    primary_name = primary_criterion
+    secondary_name = "Експертна оцінка" if primary_criterion == "Прибуток" else "Прибуток"
+    
+    # Get current result
+    current_results = get_current_result(state)
+    
+    # Show selected projects
+    selected_projects = ", ".join([f"x{i+1}" for i, x in enumerate(current_results["final_solution"]) if x == 1]) or "Жодного"
+    
+    st.markdown("### Результати оптимізації")
+    
+    # Create a nice styled summary with columns
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Деталі рішення:**")
+        st.markdown(f"**Вибрані проєкти:** {selected_projects}")
+        st.markdown(f"**Загальна вартість:** {current_results['final_cost']}")
+    
+    with col2:
+        st.markdown("**Значення критеріїв:**")
+        st.markdown(f"**{primary_name}:** {current_results['final_primary_value']}")
+        st.markdown(f"**{secondary_name}:** {current_results['final_secondary_value']}")
+        st.markdown(f"**Загальна поступка для {primary_name}:** {current_results['total_concession']}")
+    
+    # Show history of iterations in an expander
+    history_df = get_history_df(state)
+
+    # Rename columns based on primary criterion
+    column_mapping = {
+        'Критерій 1': primary_name,
+        'Критерій 2': secondary_name
+    }
+    history_df = history_df.rename(columns=column_mapping)
+
+    with st.expander("Історія ітерацій", expanded=False):
+        st.dataframe(history_df, use_container_width=True)
+
+    csv = history_df.to_csv(index=False)
+    st.download_button(
+        label="Завантажити історію ітерацій як CSV",
+        data=csv,
+        file_name="sequential_concessions_history.csv",
+        mime="text/csv",
+    )
+
+    # Visualize the final solution
+    st.markdown("### Візуалізація фінального рішення")
+    
+    # Get all combinations from the last iteration
+    latest_entry = None
+    for entry in reversed(state["history"]):
+        if "acceptable_combinations" in entry and entry["acceptable_combinations"]:
+            latest_entry = entry
+            break
+    
+    if latest_entry:
+        final_solution = state["current_solution"]
+        
+        # Convert to plotting format
+        plot_data = []
+        for combo, cost, primary_value, secondary_value in latest_entry["acceptable_combinations"]:
+            combo_str = ", ".join([f"x{j+1}" for j, x in enumerate(combo) if x == 1]) or "Жодного"
+            point_type = "Фінальне рішення" if np.array_equal(combo, final_solution) else "Інші можливі рішення"
+            
+            plot_data.append({
+                "Комбінація": combo_str,
+                primary_name: primary_value,
+                secondary_name: secondary_value,
+                "Вартість": cost,
+                "Тип": point_type
+            })
+        
+        plot_df = pd.DataFrame(plot_data)
+        
+        # Create scatter plot with Plotly
+        fig = px.scatter(
+            plot_df, 
+            x=primary_name, 
+            y=secondary_name,
+            color="Тип",
+            symbol="Тип",
+            hover_name="Комбінація",
+            hover_data=["Вартість"],
+            title=f"{primary_name} vs {secondary_name} для фінального рішення",
+            color_discrete_map={
+                "Фінальне рішення": "#FF5733",
+                "Інші можливі рішення": "#BEBEBE"
+            },
+            symbol_map={
+                "Фінальне рішення": "star",
+                "Інші можливі рішення": "circle"
+            },
+            size_max=15
+        )
+        
+        # Customize layout
+        fig.update_layout(
+            xaxis_title=primary_name,
+            yaxis_title=secondary_name,
+            legend_title="Тип рішення",
+            height=500,
+            width=800,
+            autosize=False
+        )
+        
+        st.plotly_chart(fig)
 
 def display_sequential_concessions_results(state, primary_criterion, concession_amount):
     """Display the results of the sequential concessions method"""
@@ -260,19 +426,6 @@ def display_sequential_concessions_results(state, primary_criterion, concession_
     # Determine names for criteria
     primary_name = primary_criterion
     secondary_name = "Експертна оцінка" if primary_criterion == "Прибуток" else "Прибуток"
-    
-    with st.expander("Про метод послідовних поступок", expanded=False):
-        st.markdown("""
-        **Метод послідовних поступок** — це підхід до вирішення багатокритеріальних задач оптимізації, 
-        який передбачає:
-        
-        1. Ранжування критеріїв за важливістю
-        2. Оптимізацію за найважливішим критерієм
-        3. Послідовне зменшення вимог до оптимізованих критеріїв (поступки)
-        4. Оптимізацію за наступним за важливістю критерієм з урахуванням зроблених поступок
-        
-        Цей метод дозволяє знайти компромісне рішення, враховуючи відносну важливість різних критеріїв.
-        """)
     
     # Get current result
     current_results = get_current_result(state)
