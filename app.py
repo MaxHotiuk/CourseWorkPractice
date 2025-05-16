@@ -12,21 +12,29 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.normalize import normalize_data, create_normalization_df, verify_normalization
 from utils.knapsack import solve_knapsack, create_dp_table_df
 from utils.combinations import generate_combinations, calculate_distances, create_combinations_df
+from utils.sequential_concessions import (initialize_sequential_concessions, make_next_concession, 
+                                        get_current_result, create_concessions_df, get_history_df)
 
 def main():
-    st.set_page_config(page_title="Метод ідеальної точки для вибору проєктів", 
+    st.set_page_config(page_title="Вибір проєктів за кількома критеріями", 
                        page_icon="📊", 
                        layout="wide")
     
-    st.title("Метод ідеальної точки для вибору проєктів")
+    st.title("Методи багатокритеріальної оптимізації для вибору проєктів")
     st.markdown("""
     Цей додаток допомагає особам, які приймають рішення, вибрати оптимальний портфель проєктів, 
-    враховуючи кілька критеріїв та бюджетні обмеження. Він використовує Метод ідеальної точки 
-    для знаходження рішень, що балансують різні цілі.
+    враховуючи кілька критеріїв та бюджетні обмеження.
     """)
     
     with st.sidebar:
         st.header("Вхідні параметри")
+        
+        # Select optimization method
+        optimization_method = st.radio(
+            "Метод оптимізації",
+            ["Метод ідеальної точки", "Метод послідовних поступок"],
+            index=0
+        )
         
         # Budget input
         budget = st.number_input("Доступний бюджет", min_value=1, value=6)
@@ -35,11 +43,28 @@ def main():
         num_projects = st.number_input("Кількість проєктів", min_value=1, max_value=200, value=4)
         
         st.subheader("Опції аналізу")
-        show_normalization = st.checkbox("Показати деталі нормалізації", value=True)
-        show_knapsack = st.checkbox("Показати рішення задачі про рюкзак", value=True)
-        show_combinations = st.checkbox("Показати всі комбінації", value=True)
-        num_top_combinations = st.slider("Кількість найкращих комбінацій для відображення", 
-                                         min_value=1, max_value=20, value=10)
+        
+        if optimization_method == "Метод ідеальної точки":
+            show_normalization = st.checkbox("Показати деталі нормалізації", value=True)
+            show_knapsack = st.checkbox("Показати рішення задачі про рюкзак", value=True)
+            show_combinations = st.checkbox("Показати всі комбінації", value=True)
+            num_top_combinations = st.slider("Кількість найкращих комбінацій для відображення", 
+                                            min_value=1, max_value=20, value=10)
+        else:  # Sequential concessions method
+            st.markdown("**Параметри послідовних поступок:**")
+            primary_criterion = st.radio(
+                "Основний критерій",
+                ["Прибуток", "Експертна оцінка"],
+                index=0
+            )
+            primary_criterion_index = 1 if primary_criterion == "Прибуток" else 2
+            secondary_criterion_index = 2 if primary_criterion == "Прибуток" else 1
+            
+            concession_amount = st.number_input(
+                f"Величина поступки для {primary_criterion}", 
+                min_value=1,
+                value=10
+            )
     
     # Project data input
     st.header("Дані про проєкти")
@@ -148,16 +173,207 @@ def main():
         st.warning("Будь ласка, введіть дані про проєкти, щоб продовжити.")
         return
     
-    # Run analysis when button is pressed
-    if st.button("Виконати аналіз"):
-        run_analysis(projects, budget, show_normalization, show_knapsack, 
-                    show_combinations, num_top_combinations)
-
-def run_analysis(projects, budget, show_normalization, show_knapsack, 
-                show_combinations, num_top_combinations):
-    """Run the complete project selection analysis"""
+    # Initialize session state for sequential concessions method
+    if 'concessions_state' not in st.session_state:
+        st.session_state.concessions_state = None
+    if 'show_continue_button' not in st.session_state:
+        st.session_state.show_continue_button = False
     
-    st.header("Результати аналізу")
+    # Run analysis based on selected method
+    if optimization_method == "Метод ідеальної точки":
+        if st.button("Виконати аналіз за методом ідеальної точки"):
+            # Reset sequential concessions state when switching methods
+            st.session_state.concessions_state = None
+            st.session_state.show_continue_button = False
+            
+            run_ideal_point_analysis(
+                projects, budget, show_normalization, show_knapsack, 
+                show_combinations, num_top_combinations
+            )
+    else:  # Sequential concessions method
+        # Initialize concessions process when button is pressed
+        if st.button("Розпочати аналіз методом послідовних поступок"):
+            # Initialize state
+            st.session_state.concessions_state = initialize_sequential_concessions(
+                projects, budget, primary_criterion_index, secondary_criterion_index
+            )
+            st.session_state.show_continue_button = True
+            
+            # Show initial solution
+            display_sequential_concessions_results(
+                st.session_state.concessions_state, 
+                primary_criterion,
+                concession_amount
+            )
+        
+        # Continue with next concession
+        if st.session_state.show_continue_button:
+            with st.form("concession_form"):
+                st.markdown("### Прийняти поточне рішення або зробити поступку?")
+                
+                make_concession = st.radio(
+                    "Дія:",
+                    ["Прийняти поточне рішення", "Зробити поступку і шукати нове рішення"],
+                    index=1
+                )
+                
+                if make_concession == "Зробити поступку і шукати нове рішення":
+                    new_concession = st.number_input(
+                        f"Величина поступки для {primary_criterion}", 
+                        min_value=1,
+                        value=concession_amount
+                    )
+                else:
+                    new_concession = 0
+                
+                submit_button = st.form_submit_button("Продовжити")
+                
+                if submit_button:
+                    if make_concession == "Прийняти поточне рішення":
+                        st.success("Рішення прийнято!")
+                        st.session_state.show_continue_button = False
+                    else:
+                        # Apply next concession
+                        st.session_state.concessions_state = make_next_concession(
+                            st.session_state.concessions_state, 
+                            new_concession
+                        )
+                        
+                        # Check if we still have acceptable combinations
+                        latest_history = st.session_state.concessions_state["history"][-1]
+                        if "acceptable_combinations" in latest_history and not latest_history["acceptable_combinations"]:
+                            st.warning("Немає прийнятних комбінацій з такою поступкою. Використовуємо попереднє рішення.")
+                            st.session_state.show_continue_button = False
+                        
+                        # Display updated results
+                        display_sequential_concessions_results(
+                            st.session_state.concessions_state, 
+                            primary_criterion,
+                            new_concession
+                        )
+
+def display_sequential_concessions_results(state, primary_criterion, concession_amount):
+    """Display the results of the sequential concessions method"""
+    
+    st.header("Результати методу послідовних поступок")
+    
+    # Determine names for criteria
+    primary_name = primary_criterion
+    secondary_name = "Експертна оцінка" if primary_criterion == "Прибуток" else "Прибуток"
+    
+    with st.expander("Про метод послідовних поступок", expanded=False):
+        st.markdown("""
+        **Метод послідовних поступок** — це підхід до вирішення багатокритеріальних задач оптимізації, 
+        який передбачає:
+        
+        1. Ранжування критеріїв за важливістю
+        2. Оптимізацію за найважливішим критерієм
+        3. Послідовне зменшення вимог до оптимізованих критеріїв (поступки)
+        4. Оптимізацію за наступним за важливістю критерієм з урахуванням зроблених поступок
+        
+        Цей метод дозволяє знайти компромісне рішення, враховуючи відносну важливість різних критеріїв.
+        """)
+    
+    # Get current result
+    current_results = get_current_result(state)
+    
+    # Show selected projects
+    selected_projects = ", ".join([f"x{i+1}" for i, x in enumerate(current_results["final_solution"]) if x == 1]) or "Жодного"
+    
+    st.markdown("### Поточне рішення")
+    st.markdown(f"**Вибрані проєкти:** {selected_projects}")
+    st.markdown(f"**Загальна вартість:** {current_results['final_cost']}")
+    st.markdown(f"**{primary_name}:** {current_results['final_primary_value']}")
+    st.markdown(f"**{secondary_name}:** {current_results['final_secondary_value']}")
+    st.markdown(f"**Загальна поступка для {primary_name}:** {current_results['total_concession']}")
+    
+    # Show history of iterations
+    st.markdown("### Історія ітерацій")
+    history_df = get_history_df(state)
+    
+    # Rename columns based on primary criterion
+    column_mapping = {
+        'Критерій 1': primary_name,
+        'Критерій 2': secondary_name
+    }
+    history_df = history_df.rename(columns=column_mapping)
+    
+    st.dataframe(history_df, use_container_width=True)
+    
+    # Visualize latest iteration if available
+    latest_entry = state["history"][-1]
+    if "acceptable_combinations" in latest_entry and latest_entry["acceptable_combinations"]:
+        st.markdown("### Прийнятні комбінації на поточній ітерації")
+        
+        final_solution = state["current_solution"]
+        combinations_df = create_concessions_df(latest_entry["acceptable_combinations"], final_solution)
+        
+        # Rename columns based on primary criterion
+        column_mapping = {
+            'Критерій 1': primary_name,
+            'Критерій 2': secondary_name
+        }
+        combinations_df = combinations_df.rename(columns=column_mapping)
+        
+        st.dataframe(combinations_df, use_container_width=True)
+        
+        # Create visualization
+        st.markdown("### Візуалізація")
+        
+        # Convert to plotting format
+        plot_data = []
+        for combo, cost, primary_value, secondary_value in latest_entry["acceptable_combinations"]:
+            combo_str = ", ".join([f"x{j+1}" for j, x in enumerate(combo) if x == 1]) or "Жодного"
+            point_type = "Поточне рішення" if np.array_equal(combo, final_solution) else "Можливе рішення"
+            
+            plot_data.append({
+                "Комбінація": combo_str,
+                primary_name: primary_value,
+                secondary_name: secondary_value,
+                "Вартість": cost,
+                "Тип": point_type
+            })
+        
+        plot_df = pd.DataFrame(plot_data)
+        
+        # Create scatter plot with Plotly
+        fig = px.scatter(
+            plot_df, 
+            x=primary_name, 
+            y=secondary_name,
+            color="Тип",
+            symbol="Тип",
+            hover_name="Комбінація",
+            hover_data=["Вартість"],
+            title=f"{primary_name} vs {secondary_name} для прийнятних комбінацій",
+            color_discrete_map={
+                "Поточне рішення": "#FF5733",
+                "Можливе рішення": "#BEBEBE"
+            },
+            symbol_map={
+                "Поточне рішення": "star",
+                "Можливе рішення": "circle"
+            },
+            size_max=15
+        )
+        
+        # Customize layout
+        fig.update_layout(
+            xaxis_title=primary_name,
+            yaxis_title=secondary_name,
+            legend_title="Тип рішення",
+            height=500,
+            width=800,
+            autosize=False
+        )
+        
+        st.plotly_chart(fig)
+    
+def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack, 
+                            show_combinations, num_top_combinations):
+    """Run the ideal point method analysis"""
+    
+    st.header("Результати аналізу за методом ідеальної точки")
     
     # Step 1: Normalize data
     norm_profits, norm_expert, norm_data = normalize_data(projects)
@@ -353,8 +569,8 @@ def run_analysis(projects, budget, show_normalization, show_knapsack,
             width=600,
             autosize=False,
             yaxis=dict(
-            scaleanchor="x",
-            scaleratio=1,
+                scaleanchor="x",
+                scaleratio=1,
             )
         )
         
