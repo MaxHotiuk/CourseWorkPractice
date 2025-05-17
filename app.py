@@ -235,6 +235,11 @@ def main():
                 projects, budget, primary_criterion, 
                 primary_criterion_index, secondary_criterion_index
             )
+        if st.session_state.get('solution_accepted') and 'ideal_point_solution' in st.session_state:
+            st.divider()
+            primary_name = "Прибуток" if primary_criterion == "Прибуток" else "Експертна оцінка"
+            secondary_name = "Експертна оцінка" if primary_criterion == "Прибуток" else "Прибуток"
+            show_methods_comparison(primary_name, secondary_name)
 
 def run_sequential_concessions_analysis(projects, budget, primary_criterion, 
                                        primary_criterion_index, secondary_criterion_index):
@@ -250,11 +255,12 @@ def run_sequential_concessions_analysis(projects, budget, primary_criterion,
         st.session_state.show_continue_button = True
     
     # Display initial solution
-    display_sequential_concessions_results(
-        st.session_state.concessions_state, 
-        primary_criterion,
-        1  # Initial concession amount
-    )
+    if not st.session_state.solution_accepted:
+        display_sequential_concessions_results(
+            st.session_state.concessions_state, 
+            primary_criterion,
+            1  # Initial concession amount
+        )
     
     # Sequential concessions iteration controls (if already initialized)
     if (st.session_state.concessions_state is not None and 
@@ -614,10 +620,6 @@ def display_final_sequential_solution(state, primary_criterion):
         )
         
         st.plotly_chart(fig)
-    
-    if 'ideal_point_solution' in st.session_state:
-        st.markdown('Порівняння обох методів:')
-        show_methods_comparison(primary_name, secondary_name)
 
 def display_sequential_concessions_results(state, primary_criterion, concession_amount):
     """Display the results of the sequential concessions method"""
