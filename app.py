@@ -105,7 +105,7 @@ def main():
         # Add option to download entered project data
         if projects:
             project_df = pd.DataFrame(projects, 
-                                    columns=["Вартість", "Прибуток", "Експертна оцінка"],
+                                    columns=["Cost", "Profit", "ExpertScore"],
                                     index=[f"Проєкт {i+1}" for i in range(len(projects))])
             
             # Display the entered data as a table
