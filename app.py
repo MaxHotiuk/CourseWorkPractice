@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
 import sys
 import os
 
@@ -29,13 +30,6 @@ def main():
     with st.sidebar:
         st.header("Вхідні параметри")
         
-        # Select optimization method
-        optimization_method = st.radio(
-            "Метод оптимізації",
-            ["Метод ідеальної точки", "Метод послідовних поступок"],
-            index=0
-        )
-        
         # Budget input
         budget = st.number_input("Доступний бюджет", min_value=1, value=6)
         
@@ -44,21 +38,23 @@ def main():
         
         st.subheader("Опції аналізу")
         
-        if optimization_method == "Метод ідеальної точки":
-            show_normalization = st.checkbox("Показати деталі нормалізації", value=True)
-            show_knapsack = st.checkbox("Показати рішення задачі про рюкзак", value=True)
-            show_combinations = st.checkbox("Показати всі комбінації", value=True)
-            num_top_combinations = st.slider("Кількість найкращих комбінацій для відображення", 
-                                            min_value=1, max_value=20, value=10)
-        else:  # Sequential concessions method
-            st.markdown("**Параметри послідовних поступок:**")
-            primary_criterion = st.radio(
-                "Основний критерій",
-                ["Прибуток", "Експертна оцінка"],
-                index=0
-            )
-            primary_criterion_index = 1 if primary_criterion == "Прибуток" else 2
-            secondary_criterion_index = 2 if primary_criterion == "Прибуток" else 1
+        # Options for Ideal Point method
+        st.markdown("**Опції методу ідеальної точки:**")
+        show_normalization = st.checkbox("Показати деталі нормалізації", value=True)
+        show_knapsack = st.checkbox("Показати рішення задачі про рюкзак", value=True)
+        show_combinations = st.checkbox("Показати всі комбінації", value=True)
+        num_top_combinations = st.slider("Кількість найкращих комбінацій для відображення", 
+                                        min_value=1, max_value=20, value=10)
+        
+        # Options for Sequential Concessions method
+        st.markdown("**Параметри послідовних поступок:**")
+        primary_criterion = st.radio(
+            "Основний критерій",
+            ["Прибуток", "Експертна оцінка"],
+            index=0
+        )
+        primary_criterion_index = 1 if primary_criterion == "Прибуток" else 2
+        secondary_criterion_index = 2 if primary_criterion == "Прибуток" else 1
     
     # Project data input
     st.header("Дані про проєкти")
@@ -109,7 +105,7 @@ def main():
         # Add option to download entered project data
         if projects:
             project_df = pd.DataFrame(projects, 
-                                    columns=["Вартість", "Прибуток", "Експертна оцінка"],
+                                    columns=["Cost", "Profit", "ExpertScore"],
                                     index=[f"Проєкт {i+1}" for i in range(len(projects))])
             
             # Display the entered data as a table
@@ -202,115 +198,310 @@ def main():
     if 'solution_accepted' not in st.session_state:
         st.session_state.solution_accepted = False
     
-    # Run analysis based on selected method
-    if optimization_method == "Метод ідеальної точки":
-        if st.button("Виконати аналіз за методом ідеальної точки"):
-            # Reset sequential concessions state when switching methods
+    # When analyze button is pressed, run both methods
+    if st.button("Виконати аналіз обома методами") or 'ideal_point_run' in st.session_state:
+        # Store that we've run the analysis
+        st.session_state.ideal_point_run = True
+        st.session_state.budget = budget
+        
+        # Reset sequential concessions state if button was just pressed
+        if not 'ideal_point_run' in st.session_state or st.session_state.get('just_clicked', False):
             st.session_state.concessions_state = None
             st.session_state.show_continue_button = False
             st.session_state.solution_accepted = False
-            
+            st.session_state.just_clicked = False
+        
+        # Create two columns for side-by-side display
+        col1, col2 = st.columns(2)
+        
+        # Run Ideal Point method in first column
+        with col1:
             run_ideal_point_analysis(
                 projects, budget, show_normalization, show_knapsack, 
                 show_combinations, num_top_combinations
             )
-    else:  # Sequential concessions method
-        concession_amount = 1
         
-        # Initialize concessions process when button is pressed
-        if st.button("Розпочати аналіз методом послідовних поступок"):
-            # Initialize state
-            st.session_state.concessions_state = initialize_sequential_concessions(
-                projects, budget, primary_criterion_index, secondary_criterion_index
-            )
-            st.session_state.show_continue_button = True
-            st.session_state.solution_accepted = False
+        # Run Sequential Concessions method in second column
+        with col2:
+            # Initialize state if needed
+            if st.session_state.concessions_state is None:
+                st.session_state.concessions_state = initialize_sequential_concessions(
+                    projects, budget, primary_criterion_index, secondary_criterion_index
+                )
+                st.session_state.show_continue_button = True
             
             # Show initial solution
-            display_sequential_concessions_results(
-                st.session_state.concessions_state, 
-                primary_criterion,
-                concession_amount
+            run_sequential_concessions_analysis(
+                projects, budget, primary_criterion, 
+                primary_criterion_index, secondary_criterion_index
             )
+        if st.session_state.get('solution_accepted') and 'ideal_point_solution' in st.session_state:
+            st.divider()
+            primary_name = "Прибуток" if primary_criterion == "Прибуток" else "Експертна оцінка"
+            secondary_name = "Експертна оцінка" if primary_criterion == "Прибуток" else "Прибуток"
+            show_methods_comparison(primary_name, secondary_name)
+
+def run_sequential_concessions_analysis(projects, budget, primary_criterion, 
+                                       primary_criterion_index, secondary_criterion_index):
+    """Run initial analysis with sequential concessions method"""
+    
+    st.header("Метод послідовних поступок")
+    
+    # Initialize the state if needed
+    if st.session_state.concessions_state is None:
+        st.session_state.concessions_state = initialize_sequential_concessions(
+            projects, budget, primary_criterion_index, secondary_criterion_index
+        )
+        st.session_state.show_continue_button = True
+    
+    # Display initial solution
+    if not st.session_state.solution_accepted:
+        display_sequential_concessions_results(
+            st.session_state.concessions_state, 
+            primary_criterion,
+            1  # Initial concession amount
+        )
+    
+    # Sequential concessions iteration controls (if already initialized)
+    if (st.session_state.concessions_state is not None and 
+        st.session_state.show_continue_button and 
+        not st.session_state.solution_accepted):
         
-        # Continue with next concession
-        if (st.session_state.concessions_state is not None and 
-            st.session_state.show_continue_button and 
-            not st.session_state.solution_accepted):
-            with st.form("concession_form"):
-                st.markdown("### Прийняти поточне рішення або зробити поступку?")
-                
-                make_concession = st.radio(
-                    "Дія:",
-                    ["Прийняти поточне рішення", "Зробити поступку і шукати нове рішення"],
-                    index=1
+        with st.form("concession_form"):
+            st.markdown("### Прийняти поточне рішення або зробити поступку?")
+            
+            make_concession = st.radio(
+                "Дія:",
+                ["Прийняти поточне рішення", "Зробити поступку і шукати нове рішення"],
+                index=1
+            )
+            
+            if make_concession == "Зробити поступку і шукати нове рішення":
+                new_concession = st.number_input(
+                    f"Величина поступки для {primary_criterion}", 
+                    min_value=1,
+                    value=1
                 )
-                
-                if make_concession == "Зробити поступку і шукати нове рішення":
-                    new_concession = st.number_input(
-                        f"Величина поступки для {primary_criterion}", 
-                        min_value=1,
-                        value=concession_amount
+            else:
+                new_concession = 0
+            
+            submit_button = st.form_submit_button("Продовжити")
+            
+            if submit_button:
+                if make_concession == "Прийняти поточне рішення":
+                    st.success("Рішення прийнято!")
+                    st.session_state.show_continue_button = False
+                    st.session_state.solution_accepted = True
+                    st.rerun()
+                    
+                    # Display final solution after accepting
+                    display_final_sequential_solution(
+                        st.session_state.concessions_state,
+                        primary_criterion
                     )
                 else:
-                    new_concession = 0
-                
-                submit_button = st.form_submit_button("Продовжити")
-                
-                if submit_button:
-                    if make_concession == "Прийняти поточне рішення":
-                        st.success("Рішення прийнято!")
+                    # Apply next concession
+                    st.session_state.concessions_state = make_next_concession(
+                        st.session_state.concessions_state, 
+                        new_concession
+                    )
+                    
+                    # Check if we still have acceptable combinations
+                    latest_history = st.session_state.concessions_state["history"][-1]
+                    if "acceptable_combinations" in latest_history and not latest_history["acceptable_combinations"]:
+                        st.warning("Немає прийнятних комбінацій з такою поступкою. Використовуємо попереднє рішення.")
                         st.session_state.show_continue_button = False
                         st.session_state.solution_accepted = True
-                        st.rerun()
                         
-                        # Display final solution after accepting
+                        # Display final solution when no more combinations are available
                         display_final_sequential_solution(
                             st.session_state.concessions_state,
                             primary_criterion
                         )
                     else:
-                        # Apply next concession
-                        st.session_state.concessions_state = make_next_concession(
+                        # Display updated results
+                        display_sequential_concessions_results(
                             st.session_state.concessions_state, 
+                            primary_criterion,
                             new_concession
                         )
                         
-                        # Check if we still have acceptable combinations
-                        latest_history = st.session_state.concessions_state["history"][-1]
-                        if "acceptable_combinations" in latest_history and not latest_history["acceptable_combinations"]:
-                            st.warning("Немає прийнятних комбінацій з такою поступкою. Використовуємо попереднє рішення.")
-                            st.session_state.show_continue_button = False
-                            st.session_state.solution_accepted = True
-                            
-                            # Display final solution when no more combinations are available
-                            display_final_sequential_solution(
-                                st.session_state.concessions_state,
-                                primary_criterion
-                            )
-                        else:
-                            # Display updated results
-                            display_sequential_concessions_results(
-                                st.session_state.concessions_state, 
-                                primary_criterion,
-                                new_concession
-                            )
+    # If solution was already accepted, display the final solution
+    elif st.session_state.solution_accepted and st.session_state.concessions_state:
+        display_final_sequential_solution(
+            st.session_state.concessions_state,
+            primary_criterion
+        )
+    
+    # Add download button for history CSV
+    if st.session_state.solution_accepted and 'history_csv_data' in st.session_state:
+        st.download_button(
+            label="Завантажити історію ітерацій як CSV",
+            data=st.session_state.history_csv_data,
+            file_name="sequential_concessions_history.csv",
+            mime="text/csv",
+        )  
+
+def show_methods_comparison(primary_name, secondary_name):
+    """Display enhanced comparison between both methods with more data analysis"""
+    
+    st.markdown("""
+    ### Порівняння методів багатокритеріальної оптимізації
+
+    **Метод ідеальної точки:**
+    - **Підхід**: Шукає рішення, найближче до ідеальної (але зазвичай недосяжної) точки
+    - **Переваги**: Дає одразу оптимальне рішення, враховує всі критерії одночасно
+    - **Недоліки**: Не передбачає взаємодії з особою, що приймає рішення
+    
+    **Метод послідовних поступок:**
+    - **Підхід**: Послідовно оптимізує критерії за їх важливістю, даючи поступки для знаходження балансу
+    - **Переваги**: Інтерактивний, дозволяє особі, що приймає рішення, активно вплинути на результат
+    - **Недоліки**: Може вимагати кількох ітерацій для досягнення задовільного результату
+    """)
+    
+    # Compare the solutions if both methods have final solutions
+    if st.session_state.get('ideal_point_solution') and st.session_state.get('sequential_concessions_solution'):
+        ideal = st.session_state.get('ideal_point_solution')
+        seq = st.session_state.get('sequential_concessions_solution')
         
-        # If solution was already accepted, display the final solution
-        elif st.session_state.solution_accepted and st.session_state.concessions_state:
-            display_final_sequential_solution(
-                st.session_state.concessions_state,
-                primary_criterion
-            )
+        # Create comparison table
+        compare_df = pd.DataFrame({
+            "Метрика": ["Вибрані проєкти", "Вартість", primary_name, secondary_name, "Використання бюджету (%)"],
+            f"Метод ідеальної точки": [
+                ideal.get('selected', "Не визначено"),
+                ideal.get('cost', "Не визначено"),
+                ideal.get('profit', "Не визначено"),
+                ideal.get('expert', "Не визначено"),
+                f"{ideal.get('cost', 0) / float(st.session_state.get('budget', 1)) * 100:.1f}%"
+            ],
+            f"Метод послідовних поступок": [
+                seq.get('selected', "Не визначено"),
+                seq.get('cost', "Не визначено"),
+                seq.get('profit', "Не визначено"),
+                seq.get('expert', "Не визначено"),
+                f"{seq.get('cost', 0) / float(st.session_state.get('budget', 1)) * 100:.1f}%"
+            ],
+            "Різниця": [
+                "Різна" if ideal.get('selected') != seq.get('selected') else "Однакова",
+                ideal.get('cost', 0) - seq.get('cost', 0),
+                ideal.get('profit', 0) - seq.get('profit', 0),
+                ideal.get('expert', 0) - seq.get('expert', 0),
+                f"{(ideal.get('cost', 0) - seq.get('cost', 0)) / float(st.session_state.get('budget', 1)) * 100:.1f}%"
+            ]
+        })
         
-        # Add download button for history CSV
-        if st.session_state.solution_accepted and 'history_csv_data' in st.session_state:
-            st.download_button(
-                label="Завантажити історію ітерацій як CSV",
-                data=st.session_state.history_csv_data,
-                file_name="sequential_concessions_history.csv",
-                mime="text/csv",
+        st.dataframe(compare_df, use_container_width=True)
+        
+        # Analysis of results
+        st.markdown("### Аналіз результатів")
+        
+        # Check if solutions are the same
+        if ideal.get('selected') == seq.get('selected'):
+            st.success("Обидва методи дали однаковий результат! Це свідчить про високу надійність вибраного рішення.")
+        else:
+            st.info("Методи дали різні результати. Проаналізуємо їх детальніше.")
+            
+            # Calculate differences in percentages
+            try:
+                profit_diff_pct = abs(ideal.get('profit', 0) - seq.get('profit', 0)) / max(ideal.get('profit', 1), seq.get('profit', 1)) * 100
+                expert_diff_pct = abs(ideal.get('expert', 0) - seq.get('expert', 0)) / max(ideal.get('expert', 1), seq.get('expert', 1)) * 100
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(
+                        label=f"Різниця у {primary_name}", 
+                        value=f"{abs(ideal.get('profit', 0) - seq.get('profit', 0))}", 
+                        delta=f"{profit_diff_pct:.1f}%"
+                    )
+                
+                with col2:
+                    st.metric(
+                        label=f"Різниця у {secondary_name}", 
+                        value=f"{abs(ideal.get('expert', 0) - seq.get('expert', 0))}", 
+                        delta=f"{expert_diff_pct:.1f}%"
+                    )
+                
+                # Deeper analysis
+                if profit_diff_pct < 15 and expert_diff_pct < 15:
+                    st.success("Рішення досить близькі за значеннями критеріїв, незважаючи на різні вибрані проєкти.")
+                elif profit_diff_pct > 30 or expert_diff_pct > 30:
+                    st.warning("Значна різниця в результатах. Це може свідчити про суттєві компроміси між критеріями.")
+                else:
+                    st.info("Помірна різниця в результатах. Обидва рішення можуть бути прийнятними залежно від пріоритетів особи, яка приймає рішення.")
+            except:
+                st.warning("Не вдалося обчислити детальну статистику порівняння.")
+        
+        # Visual comparison
+        st.markdown("### Візуальне порівняння")
+        
+        # Create data for radar chart
+        categories = [primary_name, secondary_name, "Використання бюджету"]
+        
+        # Normalize values for better visualization
+        try:
+            max_profit = max(ideal.get('profit', 0), seq.get('profit', 0))
+            max_expert = max(ideal.get('expert', 0), seq.get('expert', 0))
+            budget = float(st.session_state.get('budget', 1))
+            
+            ideal_values = [
+                ideal.get('profit', 0) / max_profit if max_profit > 0 else 0,
+                ideal.get('expert', 0) / max_expert if max_expert > 0 else 0,
+                ideal.get('cost', 0) / budget
+            ]
+            
+            seq_values = [
+                seq.get('profit', 0) / max_profit if max_profit > 0 else 0,
+                seq.get('expert', 0) / max_expert if max_expert > 0 else 0,
+                seq.get('cost', 0) / budget
+            ]
+            
+            # Create polar plot with Plotly
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatterpolar(
+                r=ideal_values,
+                theta=categories,
+                fill='toself',
+                name='Метод ідеальної точки'
+            ))
+            
+            fig.add_trace(go.Scatterpolar(
+                r=seq_values,
+                theta=categories,
+                fill='toself',
+                name='Метод послідовних поступок'
+            ))
+            
+            fig.update_layout(
+                polar=dict(
+                    radialaxis=dict(
+                        visible=True,
+                        range=[0, 1]
+                    )
+                ),
+                showlegend=True,
+                title="Порівняння методів за нормалізованими критеріями",
+                height=500
             )
+            
+            st.plotly_chart(fig)
+        except:
+            st.warning("Не вдалося створити візуальне порівняння.")
+        
+        # Recommendations
+        st.markdown("### Рекомендації щодо вибору методу")
+        st.markdown("""
+        - **Метод ідеальної точки** варто використовувати, коли:
+          - Всі критерії мають приблизно однакову важливість
+          - Потрібно отримати швидке рішення без ітерацій
+          - Немає чіткої ієрархії критеріїв
+        
+        - **Метод послідовних поступок** краще підходить, коли:
+          - Є чітка ієрархія критеріїв
+          - Важливо контролювати величину компромісів
+          - Особа, що приймає рішення, хоче активно брати участь у процесі
+          - Потрібна гнучкість у встановленні балансу між критеріями
+        """)
 
 def display_final_sequential_solution(state, primary_criterion):
     """Display the final solution after accepting in sequential concessions method"""
@@ -326,6 +517,14 @@ def display_final_sequential_solution(state, primary_criterion):
     
     # Show selected projects
     selected_projects = ", ".join([f"x{i+1}" for i, x in enumerate(current_results["final_solution"]) if x == 1]) or "Жодного"
+    
+    # Store solution in session state for comparison
+    st.session_state.sequential_concessions_solution = {
+        'selected': selected_projects,
+        'cost': current_results['final_cost'],
+        'profit': current_results['final_primary_value'] if primary_criterion == "Прибуток" else current_results['final_secondary_value'],
+        'expert': current_results['final_secondary_value'] if primary_criterion == "Прибуток" else current_results['final_primary_value']
+    }
     
     st.markdown("### Результати оптимізації")
     
@@ -416,7 +615,7 @@ def display_final_sequential_solution(state, primary_criterion):
             yaxis_title=secondary_name,
             legend_title="Тип рішення",
             height=500,
-            width=800,
+            width=600,
             autosize=False
         )
         
@@ -424,8 +623,6 @@ def display_final_sequential_solution(state, primary_criterion):
 
 def display_sequential_concessions_results(state, primary_criterion, concession_amount):
     """Display the results of the sequential concessions method"""
-    
-    st.header("Результати методу послідовних поступок")
     
     # Determine names for criteria
     primary_name = primary_criterion
@@ -520,7 +717,7 @@ def display_sequential_concessions_results(state, primary_criterion, concession_
             yaxis_title=secondary_name,
             legend_title="Тип рішення",
             height=500,
-            width=800,
+            width=600,
             autosize=False
         )
         
@@ -530,7 +727,7 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
                             show_combinations, num_top_combinations):
     """Run the ideal point method analysis"""
     
-    st.header("Результати аналізу за методом ідеальної точки")
+    st.header("Метод ідеальної точки")
     
     # Step 1: Normalize data
     norm_profits, norm_expert, norm_data = normalize_data(projects)
@@ -568,11 +765,11 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
         """)
         
         # Solve for max profit
-        profit_solution, max_profit, profit_dp, profit_path = solve_knapsack(
+        profit_solution, max_profit, profit_dp, _ = solve_knapsack(
             projects, budget, 1)
         
         # Solve for max expert score
-        expert_solution, max_expert, expert_dp, expert_path = solve_knapsack(
+        expert_solution, max_expert, expert_dp, _ = solve_knapsack(
             projects, budget, 2)
         
         # Find normalized ideal points
@@ -747,6 +944,14 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
                 file_name="project_selection_results.csv",
                 mime="text/csv",
             )
+            
+    st.session_state.ideal_point_solution = {
+        'selected': selected,
+        'cost': best_cost,
+        'profit': best_profit,
+        'expert': best_expert,
+        'distance': best_distance
+    }
 
 if __name__ == "__main__":
     main()
