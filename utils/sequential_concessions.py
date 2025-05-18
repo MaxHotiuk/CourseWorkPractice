@@ -46,16 +46,6 @@ def initialize_sequential_concessions(projects, budget, primary_criterion_index=
     }
 
 def make_next_concession(state, concession_amount):
-    """
-    Застосовує наступну поступку в процесі послідовних поступок.
-    
-    Аргументи:
-        state: Поточний стан процесу послідовних поступок
-        concession_amount: Абсолютна величина поступки для основного критерію
-    
-    Повертає:
-        dict: Оновлений стан процесу послідовних поступок
-    """
     projects = state["projects"]
     budget = state["budget"]
     primary_criterion_index = state["primary_criterion_index"]
@@ -111,15 +101,6 @@ def make_next_concession(state, concession_amount):
     return state
 
 def get_current_result(state):
-    """
-    Отримує поточний результат процесу послідовних поступок.
-    
-    Аргументи:
-        state: Поточний стан процесу послідовних поступок
-    
-    Повертає:
-        dict: Поточні результати
-    """
     return {
         "final_solution": state["current_solution"],
         "final_primary_value": state["current_primary_value"],
@@ -204,71 +185,3 @@ def get_history_df(state):
             'Повідомлення': entry["message"]
         })
     return pd.DataFrame(rows)
-
-# Функція для зворотної сумісності
-def apply_sequential_concessions(projects, budget, primary_criterion_index=1, secondary_criterion_index=2, concession_amount=10, secondary_threshold=None):
-    """
-    Застосовує метод послідовних поступок для двох критеріїв (старий API для сумісності).
-    
-    Аргументи:
-        projects: Список проєктів, кожен містить [вартість, критерій1, критерій2]
-        budget: Доступний бюджет
-        primary_criterion_index: Індекс основного критерію (1 або 2)
-        secondary_criterion_index: Індекс другорядного критерію (1 або 2)
-        concession_amount: Абсолютна величина поступки для основного критерію
-        secondary_threshold: Мінімально прийнятне значення другорядного критерію (опціонально)
-    
-    Повертає:
-        dict: Результати методу послідовних поступок
-    """
-    # Крок 1: Оптимізація за основним критерієм
-    primary_solution, primary_max, _, _ = solve_knapsack(projects, budget, primary_criterion_index)
-    primary_cost = sum(projects[i][0] for i, x in enumerate(primary_solution) if x == 1)
-    secondary_value = sum(projects[i][secondary_criterion_index] for i, x in enumerate(primary_solution) if x == 1)
-    
-    # Перевірка, чи другорядний критерій уже прийнятний
-    if secondary_threshold is not None and secondary_value >= secondary_threshold:
-        return {
-            "final_solution": primary_solution,
-            "final_primary_value": primary_max,
-            "final_secondary_value": secondary_value,
-            "final_cost": primary_cost,
-            "message": f"Другорядний критерій ({secondary_value}) >= порогу ({secondary_threshold}). Поступка не потрібна."
-        }
-    
-    # Крок 2: Генеруємо всі можливі комбінації
-    all_combinations = generate_all_combinations(projects, budget)
-    min_acceptable_primary = primary_max - concession_amount
-    
-    # Крок 3: Фільтруємо комбінації
-    acceptable_combinations = []
-    for combo, cost in all_combinations:
-        combo_primary = sum(projects[i][primary_criterion_index] for i, x in enumerate(combo) if x == 1)
-        combo_secondary = sum(projects[i][secondary_criterion_index] for i, x in enumerate(combo) if x == 1)
-        if combo_primary >= min_acceptable_primary:
-            acceptable_combinations.append((combo, cost, combo_primary, combo_secondary))
-    
-    if not acceptable_combinations:
-        return {
-            "final_solution": primary_solution,
-            "final_primary_value": primary_max,
-            "final_secondary_value": secondary_value,
-            "final_cost": primary_cost,
-            "message": f"Немає комбінацій з основним критерієм >= {min_acceptable_primary}."
-        }
-    
-    # Крок 4: Вибираємо найкращу за другорядним критерієм
-    final_solution = max(acceptable_combinations, key=lambda x: x[3])
-    combo, combo_cost, combo_primary, combo_secondary = final_solution
-    
-    return {
-        "primary_solution": primary_solution,
-        "primary_max": primary_max,
-        "secondary_value": secondary_value,
-        "final_solution": combo,
-        "final_primary_value": combo_primary,
-        "final_secondary_value": combo_secondary,
-        "final_cost": combo_cost,
-        "acceptable_combinations": acceptable_combinations,
-        "message": f"Знайдено рішення: основний = {combo_primary}, другорядний = {combo_secondary}."
-    }

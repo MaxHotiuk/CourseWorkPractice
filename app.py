@@ -765,11 +765,11 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
         """)
         
         # Solve for max profit
-        profit_solution, max_profit, profit_dp, profit_path = solve_knapsack(
+        profit_solution, max_profit, profit_dp, _ = solve_knapsack(
             projects, budget, 1)
         
         # Solve for max expert score
-        expert_solution, max_expert, expert_dp, expert_path = solve_knapsack(
+        expert_solution, max_expert, expert_dp, _ = solve_knapsack(
             projects, budget, 2)
         
         # Find normalized ideal points
