@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import sys
@@ -41,7 +40,7 @@ def main():
         # Options for Ideal Point method
         st.markdown("**Опції методу ідеальної точки:**")
         show_normalization = st.checkbox("Показати деталі нормалізації", value=True)
-        show_knapsack = st.checkbox("Показати рішення задачі про рюкзак", value=True)
+        show_knapsack = st.checkbox("Показати рішення динамічного програмування", value=True)
         show_combinations = st.checkbox("Показати всі комбінації", value=True)
         num_top_combinations = st.slider("Кількість найкращих комбінацій для відображення", 
                                         min_value=1, max_value=20, value=10)
@@ -128,6 +127,25 @@ def main():
                 [1, 30, 3],  # x2
                 [3, 40, 2],  # x3
                 [2, 20, 5]   # x4
+            ],
+            "Великий приклад (17 проєктів)": [
+                [80, 77, 65],  # x1
+                [87, 94, 90],  # x2
+                [68, 71, 90],  # x3
+                [72, 63, 77],  # x4
+                [66, 96, 95],  # x5
+                [77, 82, 84],  # x6
+                [99, 85, 70],  # x7
+                [85, 75, 94],  # x8
+                [70, 72, 66],  # x9
+                [93, 91, 92],  # x10
+                [98, 99, 74],  # x11
+                [72, 63, 97],  # x12
+                [100, 84, 60],  # x13
+                [89, 87, 60],  # x14
+                [67, 79, 65],  # x15
+                [86, 94, 97],  # x16
+                [91, 90, 93]   # x17
             ]
         }
         
@@ -729,7 +747,7 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
     
     st.header("Метод ідеальної точки")
     
-    # Step 1: Normalize data
+    # Крок 1: Нормалізація даних
     norm_profits, norm_expert, norm_data = normalize_data(projects)
     
     if show_normalization:
@@ -741,11 +759,11 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
             Використовується формула: $\\bar{a}_{ij} = \\frac{r_{ij}}{\\sqrt{\\sum_{i=1}^{m} r_{ij}^2}}$
             """)
             
-            # Show normalization table
+            # Показати нормалізовані дані
             norm_df = create_normalization_df(projects, norm_data)
             st.dataframe(norm_df, use_container_width=True)
             
-            # Verify normalization
+            # Верифікація нормалізації
             verify_result = verify_normalization(norm_profits, norm_expert)
             
             st.markdown("**Перевірка:**")
@@ -757,26 +775,26 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
                 st.markdown(f"Сума квадратів нормалізованих експертних оцінок: {verify_result['expert_sum']}")
                 st.markdown(f"Має дорівнювати 1.0: {'✅' if verify_result['expert_valid'] else '❌'}")
     
-    # Step 2: Solve knapsack problems to find ideal points
+    # Крок 2: Пошук ідеальної точки методом динамічного програмування
     with st.expander("Крок 2: Пошук ідеальних точок", expanded=True):
         st.markdown("""
-        Для кожного критерію ми вирішуємо задачу про рюкзак, щоб знайти максимально можливе значення 
+        Для кожного критерію ми використовуємо метод динамічного програмування, щоб знайти максимально можливе значення 
         з урахуванням бюджетних обмежень. Ці значення представляють ідеальні (але зазвичай недосяжні) точки.
         """)
         
-        # Solve for max profit
-        profit_solution, max_profit, profit_dp, _ = solve_knapsack(
+        # Розв'язати задачу про рюкзак для прибутку
+        profit_solution, max_profit, profit_dp, profit_path = solve_knapsack(
             projects, budget, 1)
         
-        # Solve for max expert score
-        expert_solution, max_expert, expert_dp, _ = solve_knapsack(
+        # Розв'язати задачу про рюкзак для експертної оцінки
+        expert_solution, max_expert, expert_dp, expert_path = solve_knapsack(
             projects, budget, 2)
         
-        # Find normalized ideal points
+        # Знайти нормалізовані значення
         ideal_profit = sum([norm_profits[i] for i, x in enumerate(profit_solution) if x == 1])
         ideal_expert = sum([norm_expert[i] for i, x in enumerate(expert_solution) if x == 1])
         
-        # Display ideal points
+        # Показати результати
         cols = st.columns(2)
         with cols[0]:
             st.markdown("**Максимізація прибутку:**")
@@ -786,7 +804,7 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
             st.markdown(f"Нормалізоване значення: {ideal_profit:.4f}")
             
             if show_knapsack:
-                st.markdown("#### Рішення задачі про рюкзак для прибутку")
+                st.markdown("#### Рішення методу динамічного програмування для прибутку")
                 st.markdown("**Таблиця динамічного програмування:**")
                 dp_df = create_dp_table_df(profit_dp, budget, "Прибуток")
                 st.dataframe(dp_df, hide_index=True)
@@ -799,7 +817,7 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
             st.markdown(f"Нормалізоване значення: {ideal_expert:.4f}")
             
             if show_knapsack:
-                st.markdown("#### Рішення задачі про рюкзак для експертної оцінки")
+                st.markdown("#### Рішення методу динамічного програмування для експертної оцінки")
                 st.markdown("**Таблиця динамічного програмування:**")
                 dp_df = create_dp_table_df(expert_dp, budget, "Експертна оцінка")
                 st.dataframe(dp_df, hide_index=True)
@@ -808,7 +826,7 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
         st.markdown(f"(Прибуток, Експертна оцінка) = ({max_profit}, {max_expert})")
         st.markdown(f"(Нормалізований прибуток, Нормалізована експертна оцінка) = ({ideal_profit:.4f}, {ideal_expert:.4f})")
     
-    # Step 3: Generate all feasible combinations
+    # Крок 3: Пошук найкращого рішення
     with st.expander("Крок 3: Пошук найкращого рішення", expanded=True):
         st.markdown("""
         Ми генеруємо всі можливі комбінації проєктів, які відповідають бюджетним обмеженням.
@@ -826,11 +844,11 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
         
         combinations = generate_combinations(projects, budget)
         
-        # Calculate distances to ideal point
+        # Розрахунок відстаней
         distances = calculate_distances(
             combinations, norm_profits, norm_expert, ideal_profit, ideal_expert)
         
-        # Display best solution
+        # Показати результати
         best_combo, best_cost, best_profit, best_expert, best_norm_profit, best_norm_expert, best_distance = distances[0]
         
         st.markdown("**Найкраще рішення:**")
@@ -844,10 +862,10 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
         st.markdown(f"Загальна експертна оцінка: {best_expert}")
         st.markdown(f"Відстань до ідеальної точки: {best_distance:.4f}")
         
-        # Show visualization of solutions
+        # Показати всі комбінації
         st.markdown("**Візуалізація рішень:**")
         
-        # Create dataframe for plotting
+        # Створити дані для візуалізації
         plot_data = []
         for combo, cost, profit, expert, norm_profit, norm_expert, distance in distances:
             combo_str = ", ".join([f"x{j+1}" for j, x in enumerate(combo) if x == 1]) or "Жодного"
@@ -877,7 +895,7 @@ def run_ideal_point_analysis(projects, budget, show_normalization, show_knapsack
         
         plot_df = pd.DataFrame(plot_data)
         
-        # Create scatter plot with Plotly
+        # Створити графік з Plotly
         fig = px.scatter(
             plot_df, 
             x="Нормалізований прибуток", 
