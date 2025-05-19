@@ -60,10 +60,8 @@ def create_normalization_df(projects, norm_data):
     df = pd.DataFrame({
         'Проєкт': [f"x{i+1}" for i in range(len(projects))],
         'Прибуток': norm_data['profits'],
-        'Прибуток²': norm_data['squared_profits'],
         'Норм. прибуток': [round(x, 4) for x in norm_data['norm_profits']],
         'Експертна оцінка': norm_data['expert_scores'],
-        'Експертна оцінка²': norm_data['squared_expert'],
         'Норм. експертна оцінка': [round(x, 4) for x in norm_data['norm_expert']]
     })
     
@@ -71,10 +69,8 @@ def create_normalization_df(projects, norm_data):
     totals = pd.DataFrame({
         'Проєкт': ['√Σ'],
         'Прибуток': [''],
-        'Прибуток²': [''],
         'Норм. прибуток': [round(norm_data['norm_factor_profits'], 4)],
         'Експертна оцінка': [''],
-        'Експертна оцінка²': [''],
         'Норм. експертна оцінка': [round(norm_data['norm_factor_expert'], 4)]
     })
     
